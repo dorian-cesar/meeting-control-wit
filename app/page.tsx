@@ -7,8 +7,9 @@ import { MeetingDetailDialog } from "@/components/meeting-detail-dialog"
 import { MeetingFilters } from "@/components/meeting-filters"
 import { DateNavigation } from "@/components/date-navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { LoginForm } from "@/components/login-form"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { Plus, LogOut } from "lucide-react"
 
 export type Meeting = {
   id: string
@@ -79,6 +80,10 @@ const SAMPLE_MEETINGS: Meeting[] = [
 ]
 
 export default function MeetingControlPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [currentUser, setCurrentUser] = useState<{ username: string; name: string } | null>(null)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
@@ -94,6 +99,15 @@ export default function MeetingControlPage() {
   })
 
   useEffect(() => {
+    const storedUser = localStorage.getItem("currentUser")
+    if (storedUser) {
+      setCurrentUser(JSON.parse(storedUser))
+      setIsAuthenticated(true)
+    }
+    setIsCheckingAuth(false)
+  }, [])
+
+  useEffect(() => {
     const stored = localStorage.getItem("meetings")
     if (stored) {
       setMeetings(JSON.parse(stored))
@@ -102,6 +116,30 @@ export default function MeetingControlPage() {
       localStorage.setItem("meetings", JSON.stringify(SAMPLE_MEETINGS))
     }
   }, [])
+
+  const handleLogin = (user: { username: string; name: string }) => {
+    setCurrentUser(user)
+    setIsAuthenticated(true)
+    localStorage.setItem("currentUser", JSON.stringify(user))
+  }
+
+  const handleLogout = () => {
+    setCurrentUser(null)
+    setIsAuthenticated(false)
+    localStorage.removeItem("currentUser")
+  }
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Cargando...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <LoginForm onLogin={handleLogin} />
+  }
 
   const handleAddMeeting = (meeting: Omit<Meeting, "id">) => {
     const newMeeting = {
@@ -174,10 +212,22 @@ export default function MeetingControlPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-foreground">Control de Reuniones</h1>
-              <p className="text-sm text-muted-foreground mt-1">Sala Wit - Agenda Semanal</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Sala Wit - Agenda Semanal
+                {currentUser && <span className="ml-2">• {currentUser.name}</span>}
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <ThemeToggle />
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                size="lg"
+                className="gap-2 transition-all hover:scale-105 bg-transparent"
+              >
+                <LogOut className="h-5 w-5" />
+                Cerrar Sesión
+              </Button>
               <Button onClick={() => setIsDialogOpen(true)} size="lg" className="gap-2 transition-all hover:scale-105">
                 <Plus className="h-5 w-5" />
                 Nueva Reunión
