@@ -21,6 +21,8 @@ export type Meeting = {
   date: string
   startTime: string
   endTime: string
+  start_at: string
+  end_at: string
 }
 
 export type User = {
@@ -31,6 +33,35 @@ export type User = {
   createdAt: string
   updatedAt: string
 }
+
+const parseMeetingFromBackend = (meetingData: any): Meeting => {
+  const startDate = new Date(meetingData.start_at)
+  const endDate = new Date(meetingData.end_at)
+
+  return {
+    ...meetingData,
+    id: meetingData.id.toString(),
+    date: startDate.toISOString().split('T')[0], // YYYY-MM-DD
+    startTime: startDate.toTimeString().slice(0, 5), // HH:MM
+    endTime: endDate.toTimeString().slice(0, 5), // HH:MM
+  }
+}
+
+const prepareMeetingForBackend = (meeting: Omit<Meeting, "id">): any => {
+  const startDateTime = new Date(`${meeting.date}T${meeting.startTime}:00`)
+  const endDateTime = new Date(`${meeting.date}T${meeting.endTime}:00`)
+
+  return {
+    title: meeting.title,
+    client: meeting.client,
+    executive: meeting.executive,
+    collaborator: meeting.collaborator,
+    location: meeting.location,
+    start_at: startDateTime.toISOString(),
+    end_at: endDateTime.toISOString(),
+  }
+}
+
 
 export default function MeetingControlPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -91,37 +122,31 @@ export default function MeetingControlPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      const fetchMeetings = async () => {
-        try {
-          const meetingsData = await getMeetings()
-          setMeetings(meetingsData)
-        } catch (err) {
-          console.error("Error obteniendo reuniones:", err)
-          setError("Error al cargar las reuniones")
-        }
-      }
-
       fetchMeetings()
     }
   }, [isAuthenticated])
 
-  const getMeetings = async () => {
-    const token = localStorage.getItem("token")
+  const fetchMeetings = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
+      if (!res.ok) {
+        throw new Error("Error obteniendo reuniones")
       }
-    })
 
-    if (!res.ok) {
-      throw new Error("Error obteniendo reuniones: " + res.status)
+      const data = await res.json()
+      // Convertir meetings del backend al formato del frontend
+      const formattedMeetings = data.results.map(parseMeetingFromBackend)
+      setMeetings(formattedMeetings)
+    } catch (err) {
+      console.error("Error obteniendo reuniones:", err)
+      setError("Error al cargar las reuniones")
     }
-
-    const data = await res.json()
-    return data.results
   }
 
   const handleLogin = (user: User) => {
@@ -141,25 +166,35 @@ export default function MeetingControlPage() {
   const handleAddMeeting = async (meeting: Omit<Meeting, "id">) => {
     try {
       const token = localStorage.getItem("token")
+      const meetingData = prepareMeetingForBackend(meeting)
+      
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify(meeting)
+        body: JSON.stringify(meetingData)
       })
 
       if (!res.ok) {
-        throw new Error("Error creando reunión")
+        const errorData = await res.json()
+        if (errorData.error === 'time_conflict') {
+          setError(`Conflicto de horario: ${errorData.message}`)
+        } else {
+          throw new Error("Error creando reunión")
+        }
+        return
       }
 
       const newMeeting = await res.json()
-      setMeetings(prev => [...prev, newMeeting])
+      const formattedMeeting = parseMeetingFromBackend(newMeeting)
+      setMeetings(prev => [...prev, formattedMeeting])
       setIsDialogOpen(false)
-    } catch (err) {
+      setError("")
+    } catch (err: any) {
       console.error("Error al crear reunión:", err)
-      setError("Error al crear la reunión")
+      setError(err.message || "Error al crear la reunión")
     }
   }
 
@@ -178,9 +213,9 @@ export default function MeetingControlPage() {
       }
 
       setMeetings(prev => prev.filter(m => m.id !== id))
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error al eliminar reunión:", err)
-      setError("Error al eliminar la reunión")
+      setError(err.message || "Error al eliminar la reunión")
     }
   }
 
@@ -193,24 +228,34 @@ export default function MeetingControlPage() {
   const handleUpdateMeeting = async (updatedMeeting: Meeting) => {
     try {
       const token = localStorage.getItem("token")
+      const meetingData = prepareMeetingForBackend(updatedMeeting)
+      
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings/${updatedMeeting.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify(updatedMeeting)
+        body: JSON.stringify(meetingData)
       })
 
       if (!res.ok) {
-        throw new Error("Error actualizando reunión")
+        const errorData = await res.json()
+        if (errorData.error === 'time_conflict') {
+          setError(`Conflicto de horario: ${errorData.message}`)
+        } else {
+          throw new Error("Error actualizando reunión")
+        }
+        return
       }
 
-      const meetingData = await res.json()
-      setMeetings(prev => prev.map(m => m.id === updatedMeeting.id ? meetingData : m))
-    } catch (err) {
+      const meetingResponse = await res.json()
+      const formattedMeeting = parseMeetingFromBackend(meetingResponse)
+      setMeetings(prev => prev.map(m => m.id === updatedMeeting.id ? formattedMeeting : m))
+      setError("")
+    } catch (err: any) {
       console.error("Error al actualizar reunión:", err)
-      setError("Error al actualizar la reunión")
+      setError(err.message || "Error al actualizar la reunión")
     }
   }
 
