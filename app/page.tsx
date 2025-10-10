@@ -69,6 +69,7 @@ export default function MeetingControlPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [error, setError] = useState("")
 
+  const [executives, setExecutives] = useState<string[]>([])
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
@@ -123,6 +124,7 @@ export default function MeetingControlPage() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchMeetings()
+      fetchUsers()
     }
   }, [isAuthenticated])
 
@@ -149,6 +151,31 @@ export default function MeetingControlPage() {
     }
   }
 
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/users`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      if (!res.ok) {
+        throw new Error("Error obteniendo usuarios")
+      }
+
+      const users = await res.json()
+      // Extraer los nombres de los usuarios para usarlos como ejecutivos
+      const executiveNames = users.map((user: any) => user.name)
+      setExecutives(executiveNames)
+    } catch (err) {
+      console.error("Error obteniendo usuarios:", err)
+      // Si falla, usa los ejecutivos de las reuniones como fallback
+      const executiveNames = Array.from(new Set(meetings.map((m) => m.executive)))
+      setExecutives(executiveNames)
+    }
+  }
+
   const handleLogin = (user: User) => {
     setCurrentUser(user)
     setIsAuthenticated(true)
@@ -167,7 +194,7 @@ export default function MeetingControlPage() {
     try {
       const token = localStorage.getItem("token")
       const meetingData = prepareMeetingForBackend(meeting)
-      
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings`, {
         method: "POST",
         headers: {
@@ -229,7 +256,7 @@ export default function MeetingControlPage() {
     try {
       const token = localStorage.getItem("token")
       const meetingData = prepareMeetingForBackend(updatedMeeting)
-      
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings/${updatedMeeting.id}`, {
         method: "PUT",
         headers: {
@@ -270,7 +297,6 @@ export default function MeetingControlPage() {
     return true
   })
 
-  const executives = Array.from(new Set(meetings.map((m) => m.executive)))
 
   const handlePreviousWeek = () => {
     setStartDate((prev) => {

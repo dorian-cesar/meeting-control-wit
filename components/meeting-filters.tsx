@@ -76,11 +76,11 @@ export function MeetingFilters({
             <span className="text-muted-foreground">Sala Wit</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-purple-500"></div>
+            <div className="h-3 w-3 rounded-full bg-cyan-500"></div>
             <span className="text-muted-foreground">Virtual</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-green-500"></div>
+            <div className="h-3 w-3 rounded-full bg-teal-500"></div>
             <span className="text-muted-foreground">Presencial</span>
           </div>
         </div>
