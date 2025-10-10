@@ -23,66 +23,20 @@ export type Meeting = {
   endTime: string
 }
 
-const SAMPLE_MEETINGS: Meeting[] = [
-  {
-    id: "1",
-    title: "Presentación Proyecto Q1",
-    client: "Empresa ABC",
-    executive: "Carlos Mendoza",
-    collaborator: "María González",
-    location: "sala-wit",
-    date: "2025-01-13",
-    startTime: "09:00",
-    endTime: "10:30",
-  },
-  {
-    id: "2",
-    title: "Revisión Estratégica",
-    client: "Tech Solutions",
-    executive: "María González",
-    location: "virtual",
-    date: "2025-01-13",
-    startTime: "11:00",
-    endTime: "12:00",
-  },
-  {
-    id: "3",
-    title: "Reunión con Cliente",
-    client: "Global Corp",
-    executive: "Juan Pérez",
-    collaborator: "Ana Silva",
-    location: "presencial",
-    date: "2025-01-14",
-    startTime: "14:00",
-    endTime: "15:30",
-  },
-  {
-    id: "4",
-    title: "Planning Mensual",
-    client: "Interno",
-    executive: "Ana Silva",
-    location: "sala-wit",
-    date: "2025-01-14",
-    startTime: "10:00",
-    endTime: "11:30",
-  },
-  {
-    id: "5",
-    title: "Demo Producto",
-    client: "StartUp XYZ",
-    executive: "Carlos Mendoza",
-    collaborator: "Juan Pérez",
-    location: "virtual",
-    date: "2025-01-15",
-    startTime: "15:00",
-    endTime: "16:00",
-  },
-]
+export type User = {
+  id: number
+  email: string
+  name: string
+  role: 'user' | 'salaWit'
+  createdAt: string
+  updatedAt: string
+}
 
 export default function MeetingControlPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [currentUser, setCurrentUser] = useState<{ username: string; name: string } | null>(null)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const [error, setError] = useState("")
 
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -99,75 +53,167 @@ export default function MeetingControlPage() {
   })
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("currentUser")
-    if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser))
-      setIsAuthenticated(true)
+    const checkAuth = async () => {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        setIsAuthenticated(false)
+        setIsCheckingAuth(false)
+        return
+      }
+
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/me`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        })
+
+        if (!res.ok) {
+          throw new Error("Token inválido")
+        }
+
+        const data = await res.json()
+        setCurrentUser(data.user)
+        setIsAuthenticated(true)
+      } catch (err) {
+        console.error("Error al verificar autenticación:", err)
+        localStorage.removeItem("token")
+        localStorage.removeItem("currentUser")
+        setIsAuthenticated(false)
+      } finally {
+        setIsCheckingAuth(false)
+      }
     }
-    setIsCheckingAuth(false)
+
+    checkAuth()
   }, [])
+
 
   useEffect(() => {
-    const stored = localStorage.getItem("meetings")
-    if (stored) {
-      setMeetings(JSON.parse(stored))
-    } else {
-      setMeetings(SAMPLE_MEETINGS)
-      localStorage.setItem("meetings", JSON.stringify(SAMPLE_MEETINGS))
-    }
-  }, [])
+    if (isAuthenticated) {
+      const fetchMeetings = async () => {
+        try {
+          const meetingsData = await getMeetings()
+          setMeetings(meetingsData)
+        } catch (err) {
+          console.error("Error obteniendo reuniones:", err)
+          setError("Error al cargar las reuniones")
+        }
+      }
 
-  const handleLogin = (user: { username: string; name: string }) => {
+      fetchMeetings()
+    }
+  }, [isAuthenticated])
+
+  const getMeetings = async () => {
+    const token = localStorage.getItem("token")
+
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    })
+
+    if (!res.ok) {
+      throw new Error("Error obteniendo reuniones: " + res.status)
+    }
+
+    const data = await res.json()
+    return data.results
+  }
+
+  const handleLogin = (user: User) => {
     setCurrentUser(user)
     setIsAuthenticated(true)
-    localStorage.setItem("currentUser", JSON.stringify(user))
+    setError("")
   }
 
   const handleLogout = () => {
     setCurrentUser(null)
     setIsAuthenticated(false)
+    localStorage.removeItem("token")
     localStorage.removeItem("currentUser")
+    setError("")
   }
 
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-muted-foreground">Cargando...</div>
-      </div>
-    )
-  }
+  const handleAddMeeting = async (meeting: Omit<Meeting, "id">) => {
+    try {
+      const token = localStorage.getItem("token")
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(meeting)
+      })
 
-  if (!isAuthenticated) {
-    return <LoginForm onLogin={handleLogin} />
-  }
+      if (!res.ok) {
+        throw new Error("Error creando reunión")
+      }
 
-  const handleAddMeeting = (meeting: Omit<Meeting, "id">) => {
-    const newMeeting = {
-      ...meeting,
-      id: Date.now().toString(),
+      const newMeeting = await res.json()
+      setMeetings(prev => [...prev, newMeeting])
+      setIsDialogOpen(false)
+    } catch (err) {
+      console.error("Error al crear reunión:", err)
+      setError("Error al crear la reunión")
     }
-    const updatedMeetings = [...meetings, newMeeting]
-    setMeetings(updatedMeetings)
-    localStorage.setItem("meetings", JSON.stringify(updatedMeetings))
-    setIsDialogOpen(false)
   }
 
-  const handleDeleteMeeting = (id: string) => {
-    const updatedMeetings = meetings.filter((m) => m.id !== id)
-    setMeetings(updatedMeetings)
-    localStorage.setItem("meetings", JSON.stringify(updatedMeetings))
+  const handleDeleteMeeting = async (id: string) => {
+    try {
+      const token = localStorage.getItem("token")
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      if (!res.ok) {
+        throw new Error("Error eliminando reunión")
+      }
+
+      setMeetings(prev => prev.filter(m => m.id !== id))
+    } catch (err) {
+      console.error("Error al eliminar reunión:", err)
+      setError("Error al eliminar la reunión")
+    }
   }
+
 
   const handleMeetingClick = (meeting: Meeting) => {
     setSelectedMeeting(meeting)
     setIsDetailDialogOpen(true)
   }
 
-  const handleUpdateMeeting = (updatedMeeting: Meeting) => {
-    const updatedMeetings = meetings.map((m) => (m.id === updatedMeeting.id ? updatedMeeting : m))
-    setMeetings(updatedMeetings)
-    localStorage.setItem("meetings", JSON.stringify(updatedMeetings))
+  const handleUpdateMeeting = async (updatedMeeting: Meeting) => {
+    try {
+      const token = localStorage.getItem("token")
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings/${updatedMeeting.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(updatedMeeting)
+      })
+
+      if (!res.ok) {
+        throw new Error("Error actualizando reunión")
+      }
+
+      const meetingData = await res.json()
+      setMeetings(prev => prev.map(m => m.id === updatedMeeting.id ? meetingData : m))
+    } catch (err) {
+      console.error("Error al actualizar reunión:", err)
+      setError("Error al actualizar la reunión")
+    }
   }
+
 
   const filteredMeetings = meetings.filter((meeting) => {
     if (selectedExecutive !== "all" && meeting.executive !== selectedExecutive) {
@@ -205,6 +251,18 @@ export default function MeetingControlPage() {
     setStartDate(monday)
   }
 
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Cargando...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <LoginForm onLogin={handleLogin} />
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
@@ -238,6 +296,12 @@ export default function MeetingControlPage() {
       </header>
 
       <div className="container mx-auto px-6 py-6">
+        {error && (
+          <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-md border border-destructive/20">
+            {error}
+          </div>
+        )}
+
         <MeetingFilters
           executives={executives}
           selectedExecutive={selectedExecutive}

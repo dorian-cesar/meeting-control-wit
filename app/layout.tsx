@@ -4,8 +4,7 @@ import "./globals.css"
 
 export const metadata: Metadata = {
   title: "Control de Reuniones - Sala Wit",
-  description: "Sistema de gestión de reuniones para sala Wit y ejecutivos",
-    generator: 'v0.app'
+  description: "Sistema de gestión de reuniones para sala Wit y ejecutivos"
 }
 
 export default function RootLayout({
