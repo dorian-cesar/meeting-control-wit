@@ -23,7 +23,7 @@ type MeetingDetailDialogProps = {
   onOpenChange: (open: boolean) => void
   onUpdateMeeting: (meeting: Meeting) => void
   executives: string[]
-  users?: User[] // optional: to resolve attendees & names
+  users?: User[]
 }
 
 const LOCATION_CONFIG = {
@@ -73,10 +73,8 @@ export function MeetingDetailDialog({
   // editing attendees selection is stored as attendeesObjects in formData
   useEffect(() => {
     if (formData && !formData.attendeesObjects) {
-      // try to resolve attendeesObjects from meeting.attendeesObjects or empty
       setFormData(prev => prev ? { ...prev, attendeesObjects: prev.attendeesObjects ?? [] } : prev)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData])
 
   if (!meeting || !formData) return null
@@ -97,7 +95,6 @@ export function MeetingDetailDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (formData) {
-      // ensure attendeesObjects exists
       if (!formData.attendeesObjects) formData.attendeesObjects = []
       onUpdateMeeting(formData)
       setIsEditing(false)
@@ -222,11 +219,17 @@ export function MeetingDetailDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {execOptions.map((exec) => (
-                      <SelectItem key={exec.id + "_" + exec.name} value={exec.name}>
-                        {exec.name}
+                    {execOptions.length === 0 ? (
+                      <SelectItem value="no-executives" disabled>
+                        No hay ejecutivos disponibles
                       </SelectItem>
-                    ))}
+                    ) : (
+                      execOptions.map((exec) => (
+                        <SelectItem key={exec.id + "_" + exec.name} value={exec.name}>
+                          {exec.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -234,18 +237,18 @@ export function MeetingDetailDialog({
               <div className="space-y-2">
                 <Label htmlFor="edit-collaborator">Colaborador (Opcional)</Label>
                 <Select
-                  value={formData.collaborator || ""}
+                  value={formData.collaborator || "no-collaborator"}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, collaborator: value === "" ? undefined : value })
+                    setFormData({ ...formData, collaborator: value === "no-collaborator" ? undefined : value })
                   }
                 >
                   <SelectTrigger id="edit-collaborator" className="transition-all focus:ring-2 focus:ring-blue-500">
                     <SelectValue placeholder="Sin colaborador" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin colaborador</SelectItem>
+                    <SelectItem value="no-collaborator">Sin colaborador</SelectItem>
                     {execOptions.map((exec) => (
-                      <SelectItem key={exec.id + "_" + exec.name} value={exec.name}>
+                      <SelectItem key={`collab-${exec.id}-${exec.name}`} value={exec.name}>
                         {exec.name}
                       </SelectItem>
                     ))}
@@ -253,7 +256,7 @@ export function MeetingDetailDialog({
                 </Select>
               </div>
 
-              {/* Attendees multi-select */}
+
               <div className="space-y-2">
                 <Label>Asistentes</Label>
                 <div className="max-h-40 overflow-auto border rounded p-2 bg-background">

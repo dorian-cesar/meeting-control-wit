@@ -573,6 +573,7 @@ export default function MeetingControlPage() {
         onOpenChange={setIsDetailDialogOpen}
         onUpdateMeeting={handleUpdateMeeting}
         executives={executiveNames}
+        users={users}
       />
     </div>
   )
