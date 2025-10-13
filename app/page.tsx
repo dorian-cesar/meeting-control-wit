@@ -49,7 +49,7 @@ const ErrorToast = Swal.mixin({
   timer: 3000,
   timerProgressBar: true,
   iconColor: '#ef4444',
-  background: 'white',
+  background: '#ffd4d1',
   didOpen: (toast) => {
     toast.addEventListener('mouseenter', Swal.stopTimer)
     toast.addEventListener('mouseleave', Swal.resumeTimer)
@@ -63,7 +63,7 @@ const SuccessToast = Swal.mixin({
   timer: 3000,
   timerProgressBar: true,
   iconColor: '#22c55e',
-  background: 'white',
+  background: '#d0f2c2',
   didOpen: (toast) => {
     toast.addEventListener('mouseenter', Swal.stopTimer)
     toast.addEventListener('mouseleave', Swal.resumeTimer)

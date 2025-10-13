@@ -1,5 +1,8 @@
 "use client"
 
+import Swal from 'sweetalert2'
+import 'sweetalert2/dist/sweetalert2.min.css'
+
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -16,6 +19,35 @@ export type User = {
   createdAt: string
   updatedAt: string
 }
+
+const ErrorToast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  iconColor: '#ef4444',
+  background: '#ffd4d1',
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+})
+
+const SuccessToast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  iconColor: '#22c55e',
+  background: '#d0f2c2',
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+})
+
 
 interface LoginFormProps {
   onLogin: (user: User) => void
@@ -40,23 +72,37 @@ export function LoginForm({ onLogin }: LoginFormProps) {
         body: JSON.stringify({ email, password })
       })
 
+      const data = await res.json()
+
       if (!res.ok) {
-        const errData = await res.json()
-        setError(errData.error || "Error iniciando sesión")
-        setIsLoading(false)
-        return
+        // Errores conocidos del backend
+        if (res.status === 400) {
+          const details = data.details?.join(', ') || data.error;
+          ErrorToast.fire({ icon: 'error', title: details });
+        } else if (res.status === 401) {
+          ErrorToast.fire({ icon: 'error', title: 'Credenciales inválidas' });
+        } else {
+          ErrorToast.fire({ icon: 'error', title: data.error || 'Error del servidor' });
+        }
+        setIsLoading(false);
+        return;
       }
 
-      const data = await res.json()
+
       // Guardamos token y usuario en localStorage
       localStorage.setItem("token", data.token)
       localStorage.setItem("currentUser", JSON.stringify(data.user))
 
       // Llamamos al callback para actualizar estado global
       onLogin(data.user)
+
+      SuccessToast.fire({
+        icon: 'success',
+        title: `¡Bienvenido, ${data.user.name}!`
+      })
     } catch (err: any) {
       console.error("Login error:", err)
-      setError("Error de conexión con el servidor")
+      ErrorToast.fire({ icon: 'error', title: 'Error de conexión con el servidor' });
     } finally {
       setIsLoading(false)
     }
