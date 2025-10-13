@@ -1,5 +1,8 @@
 "use client"
 
+import Swal from 'sweetalert2'
+import 'sweetalert2/dist/sweetalert2.min.css'
+
 import { useState, useEffect } from "react"
 import { WeeklyCalendar } from "@/components/weekly-calendar"
 import { AddMeetingDialog } from "@/components/add-meeting-dialog"
@@ -38,6 +41,34 @@ export type User = {
   createdAt: string
   updatedAt: string
 }
+
+const ErrorToast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  iconColor: '#ef4444',
+  background: 'white',
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+})
+
+const SuccessToast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  iconColor: '#22c55e',
+  background: 'white',
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+})
 
 const parseMeetingFromBackend = (meetingData: any, usersById?: Map<number, User>): Meeting => {
   const startDate = new Date(meetingData.start_at)
@@ -227,7 +258,10 @@ export default function MeetingControlPage() {
     try {
       const token = localStorage.getItem("token")
       if (!token) {
-        setError("No autorizado")
+        ErrorToast.fire({
+          icon: 'error',
+          title: 'No autorizado'
+        })
         return
       }
 
@@ -238,7 +272,11 @@ export default function MeetingControlPage() {
       })
 
       if (!res.ok) {
-        throw new Error("Error obteniendo usuarios")
+        ErrorToast.fire({
+          icon: 'error',
+          title: 'No se pudieron obtener los usuarios'
+        })
+        return
       }
 
       const raw = await res.json()
@@ -259,7 +297,10 @@ export default function MeetingControlPage() {
       setError("")
     } catch (err) {
       console.error("Error obteniendo usuarios:", err)
-      setError("Error al cargar usuarios")
+      ErrorToast.fire({
+        icon: 'error',
+        title: 'No se pudieron cargar los usuarios'
+      })
       // fallback: keep previous executiveNames or derive from meetings
       const fallback = Array.from(new Set(meetings.map((m) => m.executive))).filter(Boolean)
       setExecutiveNames(fallback)
@@ -270,7 +311,10 @@ export default function MeetingControlPage() {
     try {
       const token = localStorage.getItem("token")
       if (!token) {
-        setError("No autorizado")
+        ErrorToast.fire({
+          icon: 'error',
+          title: 'Debes iniciar sesión para continuar'
+        })
         return
       }
 
@@ -309,7 +353,10 @@ export default function MeetingControlPage() {
       setError("")
     } catch (err) {
       console.error("Error obteniendo reuniones:", err)
-      setError("Error al cargar las reuniones")
+      ErrorToast.fire({
+        icon: 'error',
+        title: 'No se pudieron cargar las reuniones'
+      })
     }
   }
 
@@ -365,7 +412,10 @@ export default function MeetingControlPage() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         if (errorData.error === 'time_conflict') {
-          setError(`Conflicto de horario: ${errorData.message}`)
+          ErrorToast.fire({
+            icon: 'error',
+            title: `Conflicto de horario: ${errorData.message}`
+          })
           if (errorData.conflicts) {
             console.log("Conflictos:", errorData.conflicts)
           }
@@ -375,13 +425,20 @@ export default function MeetingControlPage() {
         return
       }
 
-      // refresh from server so we get resolved executive/collaborator/attendees
       await fetchMeetings()
       setIsDialogOpen(false)
       setError("")
+
+      SuccessToast.fire({
+        icon: 'success',
+        title: 'Reunión creada correctamente'
+      })
     } catch (err: any) {
       console.error("Error al crear reunión:", err)
-      setError(err.message || "Error al crear la reunión")
+      ErrorToast.fire({
+        icon: 'error',
+        title: `Error al crear la reunión: ${err.message}`
+      })
     }
   }
 
@@ -401,9 +458,17 @@ export default function MeetingControlPage() {
 
       // refresh to keep attendees/executive consistent
       await fetchMeetings()
+
+      SuccessToast.fire({
+        icon: 'success',
+        title: 'Reunión eliminada correctamente'
+      })
     } catch (err: any) {
       console.error("Error al eliminar reunión:", err)
-      setError(err.message || "Error al eliminar la reunión")
+      ErrorToast.fire({
+        icon: 'error',
+        title: `Error al eliminar la reunión: ${err.message}`
+      })
     }
   }
 
@@ -430,7 +495,10 @@ export default function MeetingControlPage() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         if (errorData.error === 'time_conflict') {
-          setError(`Conflicto de horario: ${errorData.message}`)
+          ErrorToast.fire({
+            icon: 'error',
+            title: `Conflicto de horario: ${errorData.message}`
+          })
         } else {
           throw new Error("Error actualizando reunión")
         }
@@ -441,9 +509,18 @@ export default function MeetingControlPage() {
       await fetchMeetings()
       setIsDetailDialogOpen(false)
       setError("")
+
+      SuccessToast.fire({
+        icon: 'success',
+        title: 'Reunión actualizada correctamente'
+      })
+
     } catch (err: any) {
       console.error("Error al actualizar reunión:", err)
-      setError(err.message || "Error al actualizar la reunión")
+      ErrorToast.fire({
+        icon: 'error',
+        title: `Error al actualizar la reunión: ${err.message}`
+      })
     }
   }
 
@@ -528,11 +605,6 @@ export default function MeetingControlPage() {
       </header>
 
       <div className="container mx-auto px-6 py-6">
-        {error && (
-          <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-md border border-destructive/20">
-            {error}
-          </div>
-        )}
 
         <MeetingFilters
           executives={executiveNames}
