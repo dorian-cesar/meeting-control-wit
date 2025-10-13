@@ -15,7 +15,7 @@ export type Meeting = {
   id: string
   title: string
   client: string
-  executive: string
+  executive: string // display name used by calendar/list
   collaborator?: string
   location: "sala-wit" | "virtual" | "presencial"
   date: string
@@ -23,6 +23,11 @@ export type Meeting = {
   endTime: string
   start_at: string
   end_at: string
+
+  // additional helpful fields parsed from backend:
+  executive_id?: number
+  collaborator_id?: number
+  attendeesObjects?: { id: number; name: string; email: string }[] // resolved attendees for detail view
 }
 
 export type User = {
@@ -34,32 +39,109 @@ export type User = {
   updatedAt: string
 }
 
-const parseMeetingFromBackend = (meetingData: any): Meeting => {
+const parseMeetingFromBackend = (meetingData: any, usersById?: Map<number, User>): Meeting => {
   const startDate = new Date(meetingData.start_at)
   const endDate = new Date(meetingData.end_at)
+
+  // executive name resolution - FIXED
+  let executiveName = ""
+  let executiveId: number | undefined = undefined
+  if (meetingData.executive && typeof meetingData.executive === "object") {
+    executiveName = meetingData.executive.name || ""
+    executiveId = meetingData.executive.id
+  } else if (meetingData.executive_id !== undefined) {
+    executiveId = Number(meetingData.executive_id)
+    const u = usersById?.get(executiveId)
+    executiveName = u ? u.name : `Ejecutivo ${executiveId}`
+  } else {
+    executiveName = "Sin ejecutivo"
+  }
+
+  // collaborator resolution - FIXED
+  let collaboratorName = ""
+  let collaboratorId: number | undefined = undefined
+  if (meetingData.collaborator && typeof meetingData.collaborator === "object") {
+    collaboratorName = meetingData.collaborator.name || ""
+    collaboratorId = meetingData.collaborator.id
+  } else if (meetingData.collaborator_id !== undefined) {
+    collaboratorId = Number(meetingData.collaborator_id)
+    const u = usersById?.get(collaboratorId)
+    collaboratorName = u ? u.name : `Colaborador ${collaboratorId}`
+  }
+
+  // attendees resolution
+  let attendeesObjects: { id: number; name: string; email: string }[] = []
+  if (Array.isArray(meetingData.attendees) && meetingData.attendees.length > 0) {
+    if (typeof meetingData.attendees[0] === "object") {
+      attendeesObjects = meetingData.attendees.map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        email: a.email
+      }))
+    } else {
+      // array of ids -> try to resolve with usersById
+      const ids = meetingData.attendees.map((x: any) => Number(x))
+      attendeesObjects = ids.map((id: number) => {
+        const u = usersById?.get(id)
+        return u ? { id: u.id, name: u.name, email: u.email } : { id, name: `Usuario ${id}`, email: "" }
+      })
+    }
+  }
 
   return {
     ...meetingData,
     id: meetingData.id.toString(),
-    date: startDate.toISOString().split('T')[0], // YYYY-MM-DD
-    startTime: startDate.toTimeString().slice(0, 5), // HH:MM
-    endTime: endDate.toTimeString().slice(0, 5), // HH:MM
+    executive: executiveName,
+    executive_id: executiveId,
+    collaborator: collaboratorName || undefined,
+    collaborator_id: collaboratorId,
+    attendeesObjects,
+    date: startDate.toISOString().split('T')[0],
+    startTime: startDate.toTimeString().slice(0, 5),
+    endTime: endDate.toTimeString().slice(0, 5),
+    start_at: meetingData.start_at,
+    end_at: meetingData.end_at,
   }
 }
 
-const prepareMeetingForBackend = (meeting: Omit<Meeting, "id">): any => {
+const prepareMeetingForBackend = (meeting: Omit<Meeting, "id">, usersByName: Map<string, User>) => {
   const startDateTime = new Date(`${meeting.date}T${meeting.startTime}:00`)
   const endDateTime = new Date(`${meeting.date}T${meeting.endTime}:00`)
 
-  return {
+  const payload: any = {
     title: meeting.title,
     client: meeting.client,
-    executive: meeting.executive,
-    collaborator: meeting.collaborator,
     location: meeting.location,
     start_at: startDateTime.toISOString(),
     end_at: endDateTime.toISOString(),
   }
+
+  // CRITICAL FIX: Use executive_id instead of executive name
+  if (meeting.executive) {
+    const u = usersByName.get(meeting.executive)
+    if (u) {
+      payload.executive_id = u.id
+    } else {
+      console.warn("No se encontró ID para ejecutivo:", meeting.executive)
+      // Si no encontramos el ID, no enviamos executive_id (backend validará)
+    }
+  }
+
+  if (meeting.collaborator) {
+    const u = usersByName.get(meeting.collaborator)
+    if (u) {
+      payload.collaborator_id = u.id
+    } else {
+      console.warn("No se encontró ID para colaborador:", meeting.collaborator)
+    }
+  }
+
+  // attendees: usar IDs de los objetos de attendees
+  if ((meeting as any).attendeesObjects && Array.isArray((meeting as any).attendeesObjects)) {
+    payload.attendees = (meeting as any).attendeesObjects.map((a: any) => Number(a.id))
+  }
+
+  return payload
 }
 
 
@@ -69,7 +151,14 @@ export default function MeetingControlPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [error, setError] = useState("")
 
-  const [executives, setExecutives] = useState<string[]>([])
+  // users: full user objects from backend
+  const [users, setUsers] = useState<User[]>([])
+  const [usersById, setUsersById] = useState<Map<number, User>>(new Map())
+  const [usersByName, setUsersByName] = useState<Map<string, User>>(new Map())
+
+  // executive names for existing dialogs (backwards-compatible)
+  const [executiveNames, setExecutiveNames] = useState<string[]>([])
+
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
@@ -121,39 +210,27 @@ export default function MeetingControlPage() {
   }, [])
 
 
+  // cargar meetings y users cuando cambie fecha / location o al autenticarse
   useEffect(() => {
     if (isAuthenticated) {
-      fetchMeetings()
-      fetchUsers()
+      // load users first so we can resolve ids <-> names
+      (async () => {
+        await fetchUsers()
+        await fetchMeetings()
+      })()
     }
-  }, [isAuthenticated])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, startDate, selectedLocation])
 
-  const fetchMeetings = async () => {
-    try {
-      const token = localStorage.getItem("token")
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      })
-
-      if (!res.ok) {
-        throw new Error("Error obteniendo reuniones")
-      }
-
-      const data = await res.json()
-      // Convertir meetings del backend al formato del frontend
-      const formattedMeetings = data.results.map(parseMeetingFromBackend)
-      setMeetings(formattedMeetings)
-    } catch (err) {
-      console.error("Error obteniendo reuniones:", err)
-      setError("Error al cargar las reuniones")
-    }
-  }
 
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem("token")
+      if (!token) {
+        setError("No autorizado")
+        return
+      }
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/users`, {
         headers: {
           "Authorization": `Bearer ${token}`
@@ -164,15 +241,75 @@ export default function MeetingControlPage() {
         throw new Error("Error obteniendo usuarios")
       }
 
-      const users = await res.json()
-      // Extraer los nombres de los usuarios para usarlos como ejecutivos
-      const executiveNames = users.map((user: any) => user.name)
-      setExecutives(executiveNames)
+      const raw = await res.json()
+      // backend returns an array like you showed; ensure it's an array
+      const usersArray: User[] = Array.isArray(raw) ? raw : (Array.isArray(raw.results) ? raw.results : [])
+      setUsers(usersArray)
+
+      // build maps
+      const byId = new Map<number, User>(usersArray.map(u => [u.id, u]))
+      setUsersById(byId)
+      const byName = new Map<string, User>()
+      usersArray.forEach(u => byName.set(u.name, u))
+      setUsersByName(byName)
+
+      // executive names for select controls (keep compatibility)
+      const execNames = usersArray.map(u => u.name)
+      setExecutiveNames(execNames)
+      setError("")
     } catch (err) {
       console.error("Error obteniendo usuarios:", err)
-      // Si falla, usa los ejecutivos de las reuniones como fallback
-      const executiveNames = Array.from(new Set(meetings.map((m) => m.executive)))
-      setExecutives(executiveNames)
+      setError("Error al cargar usuarios")
+      // fallback: keep previous executiveNames or derive from meetings
+      const fallback = Array.from(new Set(meetings.map((m) => m.executive))).filter(Boolean)
+      setExecutiveNames(fallback)
+    }
+  }
+
+  const fetchMeetings = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        setError("No autorizado")
+        return
+      }
+
+      const start = new Date(startDate)
+      start.setHours(0, 0, 0, 0)
+
+      const end = new Date(startDate)
+      end.setDate(end.getDate() + 13) // 14 días en total
+      end.setHours(23, 59, 59, 999)
+
+      const params = new URLSearchParams()
+      params.set("startDate", start.toISOString())
+      params.set("endDate", end.toISOString())
+
+      if (selectedLocation && selectedLocation !== "all") {
+        params.set("location", selectedLocation)
+      }
+
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/meetings?${params.toString()}`
+
+      const res = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      if (!res.ok) {
+        throw new Error("Error obteniendo reuniones")
+      }
+
+      const data = await res.json()
+      const meetingsRaw = Array.isArray(data) ? data : (Array.isArray(data.results) ? data.results : [])
+      // parse using usersById (may be empty on first load; parseMeetingFromBackend handles that)
+      const formattedMeetings = meetingsRaw.map((m: any) => parseMeetingFromBackend(m, usersById))
+      setMeetings(formattedMeetings)
+      setError("")
+    } catch (err) {
+      console.error("Error obteniendo reuniones:", err)
+      setError("Error al cargar las reuniones")
     }
   }
 
@@ -190,10 +327,31 @@ export default function MeetingControlPage() {
     setError("")
   }
 
-  const handleAddMeeting = async (meeting: Omit<Meeting, "id">) => {
+  // NOTE: AddMeetingDialog must provide executive as a NAME (string) or already include attendeesObjects (array of {id,name})
+  // prepareMeetingForBackend will map names -> ids using usersByName
+  const handleAddMeeting = async (meetingData: {
+    title: string
+    client: string
+    executive: string
+    collaborator?: string
+    location: "sala-wit" | "virtual" | "presencial"
+    date: string
+    startTime: string
+    endTime: string
+  }) => {
     try {
       const token = localStorage.getItem("token")
-      const meetingData = prepareMeetingForBackend(meeting)
+
+      // Convertir meetingData al formato que necesita prepareMeetingForBackend
+      const meetingForBackend = {
+        ...meetingData,
+        // Estos campos serán ignorados por prepareMeetingForBackend, pero mantienen la estructura
+        id: "", // dummy value
+        start_at: "", // dummy value  
+        end_at: "", // dummy value
+      } as Meeting
+
+      const meetingPayload = prepareMeetingForBackend(meetingForBackend, usersByName)
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings`, {
         method: "POST",
@@ -201,22 +359,24 @@ export default function MeetingControlPage() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify(meetingData)
+        body: JSON.stringify(meetingPayload)
       })
 
       if (!res.ok) {
-        const errorData = await res.json()
+        const errorData = await res.json().catch(() => ({}))
         if (errorData.error === 'time_conflict') {
           setError(`Conflicto de horario: ${errorData.message}`)
+          if (errorData.conflicts) {
+            console.log("Conflictos:", errorData.conflicts)
+          }
         } else {
-          throw new Error("Error creando reunión")
+          throw new Error(errorData.details?.[0] || "Error creando reunión")
         }
         return
       }
 
-      const newMeeting = await res.json()
-      const formattedMeeting = parseMeetingFromBackend(newMeeting)
-      setMeetings(prev => [...prev, formattedMeeting])
+      // refresh from server so we get resolved executive/collaborator/attendees
+      await fetchMeetings()
       setIsDialogOpen(false)
       setError("")
     } catch (err: any) {
@@ -239,7 +399,8 @@ export default function MeetingControlPage() {
         throw new Error("Error eliminando reunión")
       }
 
-      setMeetings(prev => prev.filter(m => m.id !== id))
+      // refresh to keep attendees/executive consistent
+      await fetchMeetings()
     } catch (err: any) {
       console.error("Error al eliminar reunión:", err)
       setError(err.message || "Error al eliminar la reunión")
@@ -255,7 +416,7 @@ export default function MeetingControlPage() {
   const handleUpdateMeeting = async (updatedMeeting: Meeting) => {
     try {
       const token = localStorage.getItem("token")
-      const meetingData = prepareMeetingForBackend(updatedMeeting)
+      const meetingData = prepareMeetingForBackend(updatedMeeting, usersByName)
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/meetings/${updatedMeeting.id}`, {
         method: "PUT",
@@ -267,7 +428,7 @@ export default function MeetingControlPage() {
       })
 
       if (!res.ok) {
-        const errorData = await res.json()
+        const errorData = await res.json().catch(() => ({}))
         if (errorData.error === 'time_conflict') {
           setError(`Conflicto de horario: ${errorData.message}`)
         } else {
@@ -276,9 +437,9 @@ export default function MeetingControlPage() {
         return
       }
 
-      const meetingResponse = await res.json()
-      const formattedMeeting = parseMeetingFromBackend(meetingResponse)
-      setMeetings(prev => prev.map(m => m.id === updatedMeeting.id ? formattedMeeting : m))
+      // refresh from server to get resolved relations
+      await fetchMeetings()
+      setIsDetailDialogOpen(false)
       setError("")
     } catch (err: any) {
       console.error("Error al actualizar reunión:", err)
@@ -374,7 +535,7 @@ export default function MeetingControlPage() {
         )}
 
         <MeetingFilters
-          executives={executives}
+          executives={executiveNames}
           selectedExecutive={selectedExecutive}
           selectedLocation={selectedLocation}
           onExecutiveChange={setSelectedExecutive}
@@ -402,7 +563,8 @@ export default function MeetingControlPage() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onAddMeeting={handleAddMeeting}
-        executives={executives}
+        executives={executiveNames}
+        users={users}
       />
 
       <MeetingDetailDialog
@@ -410,7 +572,7 @@ export default function MeetingControlPage() {
         open={isDetailDialogOpen}
         onOpenChange={setIsDetailDialogOpen}
         onUpdateMeeting={handleUpdateMeeting}
-        executives={executives}
+        executives={executiveNames}
       />
     </div>
   )

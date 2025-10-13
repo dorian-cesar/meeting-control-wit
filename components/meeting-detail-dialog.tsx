@@ -1,12 +1,11 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -15,8 +14,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Video, Building2, Calendar, Clock, User, Users, Briefcase } from "lucide-react"
-import type { Meeting } from "@/app/page"
+import { MapPin, Video, Building2, Calendar, Clock, Users, Briefcase } from "lucide-react"
+import type { Meeting, User } from "@/app/page"
 
 type MeetingDetailDialogProps = {
   meeting: Meeting | null
@@ -24,6 +23,7 @@ type MeetingDetailDialogProps = {
   onOpenChange: (open: boolean) => void
   onUpdateMeeting: (meeting: Meeting) => void
   executives: string[]
+  users?: User[] // optional: to resolve attendees & names
 }
 
 const LOCATION_CONFIG = {
@@ -50,6 +50,7 @@ export function MeetingDetailDialog({
   onOpenChange,
   onUpdateMeeting,
   executives,
+  users,
 }: MeetingDetailDialogProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState<Meeting | null>(null)
@@ -61,14 +62,43 @@ export function MeetingDetailDialog({
     }
   }, [meeting])
 
+  const userList = users ?? []
+  const execNamesFallback = executives ?? []
+
+  const execOptions = useMemo(() => {
+    if (userList.length > 0) return userList.map(u => ({ id: u.id, name: u.name }))
+    return execNamesFallback.map((name, idx) => ({ id: -1 - idx, name }))
+  }, [userList, execNamesFallback])
+
+  // editing attendees selection is stored as attendeesObjects in formData
+  useEffect(() => {
+    if (formData && !formData.attendeesObjects) {
+      // try to resolve attendeesObjects from meeting.attendeesObjects or empty
+      setFormData(prev => prev ? { ...prev, attendeesObjects: prev.attendeesObjects ?? [] } : prev)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData])
+
   if (!meeting || !formData) return null
 
   const locationConfig = LOCATION_CONFIG[meeting.location]
   const LocationIcon = locationConfig.icon
 
+  const toggleAttendee = (u: User) => {
+    setFormData((prev) => {
+      if (!prev) return prev
+      const arr = prev.attendeesObjects ?? []
+      const exists = arr.find(a => a.id === u.id)
+      if (exists) return { ...prev, attendeesObjects: arr.filter(x => x.id !== u.id) }
+      return { ...prev, attendeesObjects: [...arr, { id: u.id, name: u.name, email: u.email }] }
+    })
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (formData) {
+      // ensure attendeesObjects exists
+      if (!formData.attendeesObjects) formData.attendeesObjects = []
       onUpdateMeeting(formData)
       setIsEditing(false)
       onOpenChange(false)
@@ -98,9 +128,6 @@ export function MeetingDetailDialog({
               </Badge>
             )}
           </DialogTitle>
-          <DialogDescription>
-            {isEditing ? "Modifica los datos de la reunión" : "Información completa de la reunión"}
-          </DialogDescription>
         </DialogHeader>
 
         {isEditing ? (
@@ -195,9 +222,9 @@ export function MeetingDetailDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {executives.map((exec) => (
-                      <SelectItem key={exec} value={exec}>
-                        {exec}
+                    {execOptions.map((exec) => (
+                      <SelectItem key={exec.id + "_" + exec.name} value={exec.name}>
+                        {exec.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -207,23 +234,49 @@ export function MeetingDetailDialog({
               <div className="space-y-2">
                 <Label htmlFor="edit-collaborator">Colaborador (Opcional)</Label>
                 <Select
-                  value={formData.collaborator || "none"}
+                  value={formData.collaborator || ""}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, collaborator: value === "none" ? undefined : value })
+                    setFormData({ ...formData, collaborator: value === "" ? undefined : value })
                   }
                 >
                   <SelectTrigger id="edit-collaborator" className="transition-all focus:ring-2 focus:ring-blue-500">
                     <SelectValue placeholder="Sin colaborador" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Sin colaborador</SelectItem>
-                    {executives.map((exec) => (
-                      <SelectItem key={exec} value={exec}>
-                        {exec}
+                    <SelectItem value="">Sin colaborador</SelectItem>
+                    {execOptions.map((exec) => (
+                      <SelectItem key={exec.id + "_" + exec.name} value={exec.name}>
+                        {exec.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Attendees multi-select */}
+              <div className="space-y-2">
+                <Label>Asistentes</Label>
+                <div className="max-h-40 overflow-auto border rounded p-2 bg-background">
+                  {userList.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No hay usuarios cargados.</p>
+                  ) : (
+                    userList.map((u) => {
+                      const checked = (formData.attendeesObjects ?? []).some(a => a.id === u.id)
+                      return (
+                        <label key={u.id} className="flex items-center gap-2 text-sm py-1">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleAttendee(u)}
+                            className="h-4 w-4"
+                          />
+                          <span className="truncate">{u.name} <span className="text-xs text-muted-foreground">({u.email})</span></span>
+                        </label>
+                      )
+                    })
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Selecciona los asistentes a esta reunión.</p>
               </div>
             </div>
 
@@ -274,7 +327,7 @@ export function MeetingDetailDialog({
               </div>
 
               <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                <User className="h-5 w-5 text-blue-400 mt-0.5" />
+                <Users className="h-5 w-5 text-blue-400 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground">Cliente</p>
                   <p className="text-base font-semibold">{meeting.client}</p>
@@ -282,7 +335,7 @@ export function MeetingDetailDialog({
               </div>
 
               <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                <User className="h-5 w-5 text-blue-400 mt-0.5" />
+                <Users className="h-5 w-5 text-blue-400 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground">Ejecutivo</p>
                   <p className="text-base font-semibold">{meeting.executive}</p>
@@ -298,6 +351,23 @@ export function MeetingDetailDialog({
                   </div>
                 </div>
               )}
+
+              {/* Attendees list */}
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                <Users className="h-5 w-5 text-blue-400 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground">Asistentes</p>
+                  {meeting.attendeesObjects && meeting.attendeesObjects.length > 0 ? (
+                    <ul className="text-sm list-disc ml-5 mt-1">
+                      {meeting.attendeesObjects.map((a) => (
+                        <li key={a.id}>{a.name} {a.email ? `(${a.email})` : ''}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1">No hay asistentes</p>
+                  )}
+                </div>
+              </div>
             </div>
 
             <DialogFooter>
