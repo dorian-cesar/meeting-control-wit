@@ -204,6 +204,9 @@ export default function MeetingControlPage() {
     return monday
   })
 
+  const effectiveLocation = currentUser?.role === "salaWit" ? "sala-wit" : selectedLocation
+
+
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem("token")
@@ -540,12 +543,11 @@ export default function MeetingControlPage() {
     if (selectedExecutive !== "all" && meeting.executive !== selectedExecutive) {
       return false
     }
-    if (selectedLocation !== "all" && meeting.location !== selectedLocation) {
+    if (effectiveLocation !== "all" && meeting.location !== effectiveLocation) {
       return false
     }
     return true
   })
-
 
   const handlePreviousWeek = () => {
     setStartDate((prev) => {
@@ -606,10 +608,12 @@ export default function MeetingControlPage() {
                 <LogOut className="h-5 w-5" />
                 Cerrar Sesión
               </Button>
-              <Button onClick={() => setIsDialogOpen(true)} size="lg" className="gap-2 transition-all hover:scale-105">
-                <Plus className="h-5 w-5" />
-                Nueva Reunión
-              </Button>
+              {currentUser?.role !== "salaWit" && (
+                <Button onClick={() => setIsDialogOpen(true)} size="lg" className="gap-2 transition-all hover:scale-105">
+                  <Plus className="h-5 w-5" />
+                  Nueva Reunión
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -620,9 +624,9 @@ export default function MeetingControlPage() {
         <MeetingFilters
           executives={executiveNames}
           selectedExecutive={selectedExecutive}
-          selectedLocation={selectedLocation}
+          selectedLocation={effectiveLocation}  // forzado
           onExecutiveChange={setSelectedExecutive}
-          onLocationChange={setSelectedLocation}
+          onLocationChange={currentUser?.role === "salaWit" ? () => { } : setSelectedLocation}
         />
 
         <div className="mt-4">

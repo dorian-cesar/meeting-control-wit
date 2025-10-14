@@ -90,7 +90,7 @@ export function WeeklyCalendar({ meetings, onDeleteMeeting, onMeetingClick, star
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-blue-500/30 scrollbar-track-transparent">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-3 scrollbar-thin scrollbar-thumb-blue-500/30 scrollbar-track-transparent">
               {dayMeetings.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Sin reuniones</p>
               ) : (
