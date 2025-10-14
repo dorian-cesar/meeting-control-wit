@@ -79,12 +79,12 @@ export function WeeklyCalendar({ meetings, onDeleteMeeting, onMeetingClick, star
               isCurrentDay ? "ring-2 ring-blue-500 shadow-lg shadow-blue-500/20" : ""
             } flex flex-col h-full min-h-0`}
           >
-            <div className="flex-shrink-0">
+            <div className="flex">
               <h3 className={`font-semibold text-lg ${isCurrentDay ? "text-blue-400" : "text-foreground"}`}>
                 {formatDate(day)}
               </h3>
               {isCurrentDay && (
-                <Badge variant="default" className="mt-1 bg-blue-500/20 text-blue-400 border-blue-500/30">
+                <Badge variant="default" className="ml-4 bg-blue-500/20 text-blue-400 border-blue-500/30">
                   Hoy
                 </Badge>
               )}
@@ -102,7 +102,7 @@ export function WeeklyCalendar({ meetings, onDeleteMeeting, onMeetingClick, star
                     <div
                       key={meeting.id}
                       onClick={() => onMeetingClick(meeting)}
-                      className={`p-3 rounded-lg border ${locationConfig.color} group relative transition-all duration-200 hover:scale-[1.02] hover:shadow-md animate-in fade-in slide-in-from-bottom-2 cursor-pointer`}
+                      className={`p-3 rounded-lg border ${locationConfig.color} group relative transition-all duration-200 hover:shadow-md animate-in fade-in slide-in-from-bottom-2 cursor-pointer`}
                     >
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
