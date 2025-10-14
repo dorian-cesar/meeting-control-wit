@@ -220,6 +220,9 @@ export default function MeetingControlPage() {
           }
         })
 
+        if (res.status === 401) {
+          return handleUnauthorized()
+        }
         if (!res.ok) {
           throw new Error("Token inválido")
         }
@@ -254,22 +257,29 @@ export default function MeetingControlPage() {
   }, [isAuthenticated, startDate, selectedLocation])
 
 
+  const handleUnauthorized = () => {
+    localStorage.removeItem("token")
+    localStorage.removeItem("currentUser")
+    setIsAuthenticated(false)
+    setCurrentUser(null)
+    ErrorToast.fire({
+      icon: 'error',
+      title: 'Sesión expirada. Por favor inicia sesión de nuevo.'
+    })
+  }
+
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem("token")
-      if (!token) {
-        ErrorToast.fire({
-          icon: 'error',
-          title: 'No autorizado'
-        })
-        return
-      }
+      if (!token) return handleUnauthorized()
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/users`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
       })
+
+      if (res.status === 401) return handleUnauthorized()
 
       if (!res.ok) {
         ErrorToast.fire({
@@ -310,13 +320,7 @@ export default function MeetingControlPage() {
   const fetchMeetings = async () => {
     try {
       const token = localStorage.getItem("token")
-      if (!token) {
-        ErrorToast.fire({
-          icon: 'error',
-          title: 'Debes iniciar sesión para continuar'
-        })
-        return
-      }
+      if (!token) return handleUnauthorized()
 
       const start = new Date(startDate)
       start.setHours(0, 0, 0, 0)
@@ -340,6 +344,8 @@ export default function MeetingControlPage() {
           "Authorization": `Bearer ${token}`
         }
       })
+
+      if (res.status === 401) return handleUnauthorized()
 
       if (!res.ok) {
         throw new Error("Error obteniendo reuniones")
@@ -374,8 +380,7 @@ export default function MeetingControlPage() {
     setError("")
   }
 
-  // NOTE: AddMeetingDialog must provide executive as a NAME (string) or already include attendeesObjects (array of {id,name})
-  // prepareMeetingForBackend will map names -> ids using usersByName
+
   const handleAddMeeting = async (meetingData: {
     title: string
     client: string
@@ -408,6 +413,8 @@ export default function MeetingControlPage() {
         },
         body: JSON.stringify(meetingPayload)
       })
+
+      if (res.status === 401) return handleUnauthorized()
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
@@ -452,6 +459,8 @@ export default function MeetingControlPage() {
         }
       })
 
+      if (res.status === 401) return handleUnauthorized()
+
       if (!res.ok) {
         throw new Error("Error eliminando reunión")
       }
@@ -491,6 +500,8 @@ export default function MeetingControlPage() {
         },
         body: JSON.stringify(meetingData)
       })
+
+      if (res.status === 401) return handleUnauthorized()
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))

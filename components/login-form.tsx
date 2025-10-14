@@ -162,15 +162,6 @@ export function LoginForm({ onLogin }: LoginFormProps) {
               {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
             </Button>
           </form>
-
-          <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-border/50">
-            <p className="text-xs text-muted-foreground font-medium mb-2">Usuarios de prueba:</p>
-            <div className="space-y-1 text-xs text-muted-foreground">
-              <p>• admin / admin123</p>
-              <p>• carlos / carlos123</p>
-              <p>• maria / maria123</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
