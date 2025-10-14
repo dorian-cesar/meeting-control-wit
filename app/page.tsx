@@ -615,7 +615,7 @@ export default function MeetingControlPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-6">
+      <div className="w-full px-30 py-6">
 
         <MeetingFilters
           executives={executiveNames}

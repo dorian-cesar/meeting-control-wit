@@ -67,7 +67,7 @@ export function WeeklyCalendar({ meetings, onDeleteMeeting, onMeetingClick, star
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 lg:grid-rows-2 gap-3 mt-6 h-[calc(100vh-12rem)]">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 lg:grid-rows-2 gap-3 mt-6 h-[calc(100vh-20rem)]">
       {weekDays.map((day, index) => {
         const dayMeetings = getMeetingsForDay(day)
         const isCurrentDay = isToday(day)
@@ -79,7 +79,7 @@ export function WeeklyCalendar({ meetings, onDeleteMeeting, onMeetingClick, star
               isCurrentDay ? "ring-2 ring-blue-500 shadow-lg shadow-blue-500/20" : ""
             } flex flex-col h-full min-h-0`}
           >
-            <div className="mb-4 flex-shrink-0">
+            <div className="flex-shrink-0">
               <h3 className={`font-semibold text-lg ${isCurrentDay ? "text-blue-400" : "text-foreground"}`}>
                 {formatDate(day)}
               </h3>
@@ -90,7 +90,7 @@ export function WeeklyCalendar({ meetings, onDeleteMeeting, onMeetingClick, star
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-blue-500/30 scrollbar-track-transparent">
+            <div className="flex-1 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-blue-500/30 scrollbar-track-transparent">
               {dayMeetings.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Sin reuniones</p>
               ) : (
