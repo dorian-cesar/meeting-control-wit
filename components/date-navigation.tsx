@@ -1,33 +1,45 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react"
+import { ChevronLeft, ChevronRight, Calendar, ChevronsLeft, ChevronsRight } from "lucide-react"
 
 type DateNavigationProps = {
   startDate: Date
   onPreviousWeek: () => void
   onNextWeek: () => void
   onToday: () => void
+  isMobileView?: boolean
 }
 
-export function DateNavigation({ startDate, onPreviousWeek, onNextWeek, onToday }: DateNavigationProps) {
+export function DateNavigation({ startDate, onPreviousWeek, onNextWeek, onToday, isMobileView = false }: DateNavigationProps) {
   const formatWeekRange = (date: Date) => {
     const endDate = new Date(date)
-    endDate.setDate(date.getDate() + 13) // 2 semanas = 14 días
+    if (isMobileView) {
+      // En vista móvil: mostrar solo la fecha actual
+      return date.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    } else {
+      // En vista desktop: mostrar rango de 2 semanas
+      endDate.setDate(date.getDate() + 13) // 2 semanas = 14 días
 
-    const startStr = date.toLocaleDateString("es-ES", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    })
+      const startStr = date.toLocaleDateString("es-ES", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
 
-    const endStr = endDate.toLocaleDateString("es-ES", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    })
+      const endStr = endDate.toLocaleDateString("es-ES", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
 
-    return `${startStr} - ${endStr}`
+      return `${startStr} - ${endStr}`
+    }
   }
 
   return (
@@ -38,8 +50,9 @@ export function DateNavigation({ startDate, onPreviousWeek, onNextWeek, onToday 
           size="icon"
           onClick={onPreviousWeek}
           className="transition-all hover:scale-105 hover:bg-blue-500/10 bg-transparent"
+          title={isMobileView ? "Día anterior" : "Semana anterior"}
         >
-          <ChevronLeft className="h-5 w-5" />
+          {isMobileView ? <ChevronLeft className="h-5 w-5" /> : <ChevronsLeft className="h-5 w-5" />}
         </Button>
 
         <Button
@@ -48,7 +61,7 @@ export function DateNavigation({ startDate, onPreviousWeek, onNextWeek, onToday 
           className="gap-2 transition-all hover:scale-105 hover:bg-blue-500/10 bg-transparent"
         >
           <Calendar className="h-4 w-4" />
-          Hoy
+          {isMobileView ? "Hoy" : "Ir a hoy"}
         </Button>
 
         <Button
@@ -56,12 +69,15 @@ export function DateNavigation({ startDate, onPreviousWeek, onNextWeek, onToday 
           size="icon"
           onClick={onNextWeek}
           className="transition-all hover:scale-105 hover:bg-blue-500/10 bg-transparent"
+          title={isMobileView ? "Día siguiente" : "Semana siguiente"}
         >
-          <ChevronRight className="h-5 w-5" />
+          {isMobileView ? <ChevronRight className="h-5 w-5" /> : <ChevronsRight className="h-5 w-5" />}
         </Button>
       </div>
 
-      <div className="text-sm font-medium text-muted-foreground">{formatWeekRange(startDate)}</div>
+      <div className={`font-medium ${isMobileView ? 'text-base' : 'text-sm text-muted-foreground'}`}>
+        {formatWeekRange(startDate)}
+      </div>
     </div>
   )
 }

@@ -12,7 +12,7 @@ import { DateNavigation } from "@/components/date-navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LoginForm } from "@/components/login-form"
 import { Button } from "@/components/ui/button"
-import { Plus, LogOut } from "lucide-react"
+import { Plus, LogOut, Smartphone } from "lucide-react"
 
 export type Meeting = {
   id: string
@@ -182,6 +182,8 @@ export default function MeetingControlPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [error, setError] = useState("")
 
+  const [isMobileView, setIsMobileView] = useState(false)
+  const [currentDay, setCurrentDay] = useState<Date>(() => new Date())
   // users: full user objects from backend
   const [users, setUsers] = useState<User[]>([])
   const [usersById, setUsersById] = useState<Map<number, User>>(new Map())
@@ -206,6 +208,17 @@ export default function MeetingControlPage() {
 
   const effectiveLocation = currentUser?.role === "salaWit" ? "sala-wit" : selectedLocation
 
+  // Detectar cambio de tamaño de pantalla
+  useEffect(() => {
+    const checkMobileView = () => {
+      setIsMobileView(window.innerWidth < 1024) // breakpoint
+    }
+
+    checkMobileView()
+    window.addEventListener('resize', checkMobileView)
+
+    return () => window.removeEventListener('resize', checkMobileView)
+  }, [])
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -257,7 +270,7 @@ export default function MeetingControlPage() {
       })()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, startDate, selectedLocation])
+  }, [isAuthenticated, startDate, selectedLocation, currentDay, isMobileView])
 
 
   const handleUnauthorized = () => {
@@ -325,12 +338,23 @@ export default function MeetingControlPage() {
       const token = localStorage.getItem("token")
       if (!token) return handleUnauthorized()
 
-      const start = new Date(startDate)
-      start.setHours(0, 0, 0, 0)
+      let start: Date
+      let end: Date
 
-      const end = new Date(startDate)
-      end.setDate(end.getDate() + 13) // 14 días en total
-      end.setHours(23, 59, 59, 999)
+      if (isMobileView) {
+        // En vista móvil: cargar solo el día actual
+        start = new Date(currentDay)
+        start.setHours(0, 0, 0, 0)
+        end = new Date(currentDay)
+        end.setHours(23, 59, 59, 999)
+      } else {
+        // En vista desktop: cargar 2 semanas
+        start = new Date(startDate)
+        start.setHours(0, 0, 0, 0)
+        end = new Date(startDate)
+        end.setDate(end.getDate() + 13) // 14 días en total
+        end.setHours(23, 59, 59, 999)
+      }
 
       const params = new URLSearchParams()
       params.set("startDate", start.toISOString())
@@ -383,6 +407,34 @@ export default function MeetingControlPage() {
     setError("")
   }
 
+  // Navegación por día (para vista móvil)
+  const handlePreviousDay = () => {
+    setCurrentDay(prev => {
+      const newDate = new Date(prev)
+      newDate.setDate(prev.getDate() - 1)
+      return newDate
+    })
+  }
+
+  const handleNextDay = () => {
+    setCurrentDay(prev => {
+      const newDate = new Date(prev)
+      newDate.setDate(prev.getDate() + 1)
+      return newDate
+    })
+  }
+
+  const handleToday = () => {
+    if (isMobileView) {
+      setCurrentDay(new Date())
+    } else {
+      const today = new Date()
+      const currentDay = today.getDay()
+      const monday = new Date(today)
+      monday.setDate(today.getDate() - currentDay + (currentDay === 0 ? -6 : 1))
+      setStartDate(monday)
+    }
+  }
 
   const handleAddMeeting = async (meetingData: {
     title: string
@@ -484,7 +536,6 @@ export default function MeetingControlPage() {
     }
   }
 
-
   const handleMeetingClick = (meeting: Meeting) => {
     setSelectedMeeting(meeting)
     setIsDetailDialogOpen(true)
@@ -538,7 +589,6 @@ export default function MeetingControlPage() {
     }
   }
 
-
   const filteredMeetings = meetings.filter((meeting) => {
     if (selectedExecutive !== "all" && meeting.executive !== selectedExecutive) {
       return false
@@ -565,14 +615,6 @@ export default function MeetingControlPage() {
     })
   }
 
-  const handleToday = () => {
-    const today = new Date()
-    const currentDay = today.getDay()
-    const monday = new Date(today)
-    monday.setDate(today.getDate() - currentDay + (currentDay === 0 ? -6 : 1))
-    setStartDate(monday)
-  }
-
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -593,7 +635,7 @@ export default function MeetingControlPage() {
             <div>
               <h1 className="text-3xl font-bold text-foreground">Control de Reuniones</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Sala Wit - Agenda Semanal
+                Sala Wit - Agenda {isMobileView ? 'Diaria' : 'Semanal'}
                 {currentUser && <span className="ml-2">• {currentUser.name}</span>}
               </p>
             </div>
@@ -631,10 +673,11 @@ export default function MeetingControlPage() {
 
         <div className="mt-4">
           <DateNavigation
-            startDate={startDate}
-            onPreviousWeek={handlePreviousWeek}
-            onNextWeek={handleNextWeek}
+            startDate={isMobileView ? currentDay : startDate}
+            onPreviousWeek={isMobileView ? handlePreviousDay : handlePreviousWeek}
+            onNextWeek={isMobileView ? handleNextDay : handleNextWeek}
             onToday={handleToday}
+            isMobileView={isMobileView}
           />
         </div>
 
@@ -642,7 +685,8 @@ export default function MeetingControlPage() {
           meetings={filteredMeetings}
           onDeleteMeeting={handleDeleteMeeting}
           onMeetingClick={handleMeetingClick}
-          startDate={startDate}
+          startDate={isMobileView ? currentDay : startDate}
+          isMobileView={isMobileView}
         />
       </div>
 
