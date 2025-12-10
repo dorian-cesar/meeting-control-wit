@@ -661,35 +661,70 @@ export default function MeetingControlPage() {
         </div>
       </header>
 
-      <div className="w-full px-30 py-6">
+      {isMobileView ? (
+        <div className="w-full h-[calc(100vh-92px)] p-6 flex gap-6">
 
-        <MeetingFilters
-          executives={executiveNames}
-          selectedExecutive={selectedExecutive}
-          selectedLocation={effectiveLocation}  // forzado
-          onExecutiveChange={setSelectedExecutive}
-          onLocationChange={currentUser?.role === "salaWit" ? () => { } : setSelectedLocation}
-          isMobileView={isMobileView}
-        />
+          <div className='flex-2'>
+            <WeeklyCalendar
+              meetings={filteredMeetings}
+              onDeleteMeeting={handleDeleteMeeting}
+              onMeetingClick={handleMeetingClick}
+              startDate={isMobileView ? currentDay : startDate}
+              isMobileView={isMobileView}
+            />
+          </div>
+          <div className='flex-1'>
+            <MeetingFilters
+              executives={executiveNames}
+              selectedExecutive={selectedExecutive}
+              selectedLocation={effectiveLocation}  // forzado
+              onExecutiveChange={setSelectedExecutive}
+              onLocationChange={currentUser?.role === "salaWit" ? () => { } : setSelectedLocation}
+              isMobileView={isMobileView}
+            />
 
-        <div className="mt-4">
-          <DateNavigation
+            <div className="mt-4">
+              <DateNavigation
+                startDate={isMobileView ? currentDay : startDate}
+                onPreviousWeek={isMobileView ? handlePreviousDay : handlePreviousWeek}
+                onNextWeek={isMobileView ? handleNextDay : handleNextWeek}
+                onToday={handleToday}
+                isMobileView={isMobileView}
+              />
+            </div>
+          </div>
+
+        </div>
+      ) : (
+        <div className="w-full p-6">
+          <MeetingFilters
+            executives={executiveNames}
+            selectedExecutive={selectedExecutive}
+            selectedLocation={effectiveLocation}  // forzado
+            onExecutiveChange={setSelectedExecutive}
+            onLocationChange={currentUser?.role === "salaWit" ? () => { } : setSelectedLocation}
+            isMobileView={isMobileView}
+          />
+
+          <div className="mt-4">
+            <DateNavigation
+              startDate={isMobileView ? currentDay : startDate}
+              onPreviousWeek={isMobileView ? handlePreviousDay : handlePreviousWeek}
+              onNextWeek={isMobileView ? handleNextDay : handleNextWeek}
+              onToday={handleToday}
+              isMobileView={isMobileView}
+            />
+          </div>
+          <WeeklyCalendar
+            meetings={filteredMeetings}
+            onDeleteMeeting={handleDeleteMeeting}
+            onMeetingClick={handleMeetingClick}
             startDate={isMobileView ? currentDay : startDate}
-            onPreviousWeek={isMobileView ? handlePreviousDay : handlePreviousWeek}
-            onNextWeek={isMobileView ? handleNextDay : handleNextWeek}
-            onToday={handleToday}
             isMobileView={isMobileView}
           />
         </div>
+      )}
 
-        <WeeklyCalendar
-          meetings={filteredMeetings}
-          onDeleteMeeting={handleDeleteMeeting}
-          onMeetingClick={handleMeetingClick}
-          startDate={isMobileView ? currentDay : startDate}
-          isMobileView={isMobileView}
-        />
-      </div>
 
       <AddMeetingDialog
         open={isDialogOpen}

@@ -81,7 +81,7 @@ export function WeeklyCalendar({ meetings, onDeleteMeeting, onMeetingClick, star
   }
 
   return (
-    <div className={`grid ${isMobileView ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-5 lg:grid-rows-2'} gap-3 mt-6 ${isMobileView ? 'h-[calc(100vh-15rem)]' : 'h-[calc(100vh-20rem)]'}`}>
+    <div className={`grid ${isMobileView ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-5 lg:grid-rows-2'} gap-3 ${isMobileView ? 'h-full' : 'mt-6 h-[calc(100vh-20rem)]'}`}>
       {weekDays.map((day, index) => {
         const dayMeetings = getMeetingsForDay(day)
         const isCurrentDay = isToday(day)

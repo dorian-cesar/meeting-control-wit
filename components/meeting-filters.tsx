@@ -24,7 +24,7 @@ export function MeetingFilters({
 }: MeetingFiltersProps) {
   return (
     <Card className="p-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-end">
         <div className="space-y-2">
           <Label htmlFor="executive-filter">Ejecutivo</Label>
           <Select value={selectedExecutive} onValueChange={onExecutiveChange}>
