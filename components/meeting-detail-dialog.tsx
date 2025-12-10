@@ -23,7 +23,8 @@ type MeetingDetailDialogProps = {
   onOpenChange: (open: boolean) => void
   onUpdateMeeting: (meeting: Meeting) => void
   executives: string[]
-  users?: User[]
+  users?: User[],
+  isMobileView?: boolean
 }
 
 const LOCATION_CONFIG = {
@@ -51,6 +52,7 @@ export function MeetingDetailDialog({
   onUpdateMeeting,
   executives,
   users,
+  isMobileView = false
 }: MeetingDetailDialogProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState<Meeting | null>(null)
@@ -113,282 +115,583 @@ export function MeetingDetailDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[650px] animate-in fade-in zoom-in-95 duration-200">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            {isEditing ? "Editar Reunión" : "Detalle de Reunión"}
-            {!isEditing && (
-              <Badge className={`${locationConfig.color} gap-1.5`}>
-                <LocationIcon className="h-3 w-3" />
-                {locationConfig.label}
-              </Badge>
-            )}
-          </DialogTitle>
-        </DialogHeader>
+    isMobileView
+      ? <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[800px] lg:max-w-[1000px] animate-in fade-in zoom-in-95 duration-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              {isEditing ? "Editar Reunión" : "Detalle de Reunión"}
+              {!isEditing && (
+                <Badge className={`${locationConfig.color} gap-1.5`}>
+                  <LocationIcon className="h-3 w-3" />
+                  {locationConfig.label}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
 
-        {isEditing ? (
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+          {isEditing ? (
+            <form onSubmit={handleSubmit}>
+              {/* Modo edición: Dos columnas para tablet */}
+              <div className="py-4 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:col-span-2">
+                  {/* Columna izquierda */}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-date">Fecha *</Label>
+                      <Input
+                        id="edit-date"
+                        type="date"
+                        required
+                        value={formData.date}
+                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                        className="transition-all focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-startTime">Hora Inicio *</Label>
+                      <Input
+                        id="edit-startTime"
+                        type="time"
+                        required
+                        value={formData.startTime}
+                        onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                        className="transition-all focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-title">Título de la Reunión *</Label>
+                      <Input
+                        id="edit-title"
+                        required
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        className="transition-all focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-executive">Ejecutivo *</Label>
+                      <Select
+                        value={formData.executive}
+                        onValueChange={(value) => setFormData({ ...formData, executive: value })}
+                      >
+                        <SelectTrigger id="edit-executive" className="transition-all focus:ring-2 focus:ring-blue-500">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {execOptions.length === 0 ? (
+                            <SelectItem value="no-executives" disabled>
+                              No hay ejecutivos disponibles
+                            </SelectItem>
+                          ) : (
+                            execOptions.map((exec) => (
+                              <SelectItem key={exec.id + "_" + exec.name} value={exec.name}>
+                                {exec.name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Columna derecha */}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-location">Lugar *</Label>
+                      <Select
+                        value={formData.location}
+                        onValueChange={(value: Meeting["location"]) => setFormData({ ...formData, location: value })}
+                      >
+                        <SelectTrigger id="edit-location" className="transition-all focus:ring-2 focus:ring-blue-500">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sala-wit">Sala de Reuniones Wit</SelectItem>
+                          <SelectItem value="virtual">Reunión Virtual</SelectItem>
+                          <SelectItem value="presencial">Presencial (Fuera de oficina)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-endTime">Hora Fin *</Label>
+                      <Input
+                        id="edit-endTime"
+                        type="time"
+                        required
+                        value={formData.endTime}
+                        onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                        className="transition-all focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-client">Cliente *</Label>
+                      <Input
+                        id="edit-client"
+                        required
+                        value={formData.client}
+                        onChange={(e) => setFormData({ ...formData, client: e.target.value })}
+                        className="transition-all focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-collaborator">Colaborador (Opcional)</Label>
+                      <Select
+                        value={formData.collaborator || "no-collaborator"}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, collaborator: value === "no-collaborator" ? undefined : value })
+                        }
+                      >
+                        <SelectTrigger id="edit-collaborator" className="transition-all focus:ring-2 focus:ring-blue-500">
+                          <SelectValue placeholder="Sin colaborador" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="no-collaborator">Sin colaborador</SelectItem>
+                          {execOptions.map((exec) => (
+                            <SelectItem key={`collab-${exec.id}-${exec.name}`} value={exec.name}>
+                              {exec.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="md:mt-0 space-y-2 md:col-span-1">
+                  <Label>Asistentes</Label>
+                  <div className="border rounded p-2 bg-background max-h-[360px] md:max-h-[520px] overflow-auto">
+                    {userList.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No hay usuarios cargados.</p>
+                    ) : (
+                      userList.map((u) => {
+                        const checked = (formData.attendeesObjects ?? []).some(a => a.id === u.id)
+                        return (
+                          <label key={u.id} className="flex items-center gap-2 text-sm py-1">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleAttendee(u)}
+                              className="h-4 w-4"
+                            />
+                            <span className="truncate">{u.name} <span className="text-xs text-muted-foreground">({u.email})</span></span>
+                          </label>
+                        )
+                      })
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Selecciona los asistentes a esta reunión.</p>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditing(false)
+                    setFormData(meeting)
+                  }}
+                  className="transition-all hover:bg-muted"
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" className="transition-all hover:scale-105">
+                  Guardar Cambios
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : (
+            /* Modo visualización: Mantiene el diseño vertical en móvil, dos columnas en tablet */
+            <div className="py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Columna izquierda */}
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                    <Calendar className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Fecha</p>
+                      <p className="text-base font-semibold capitalize">{formatDate(meeting.date)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                    <Clock className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Horario</p>
+                      <p className="text-base font-semibold">
+                        {meeting.startTime} - {meeting.endTime}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                    <Briefcase className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Título</p>
+                      <p className="text-base font-semibold">{meeting.title}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Columna derecha */}
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                    <Users className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Cliente</p>
+                      <p className="text-base font-semibold">{meeting.client}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                    <Users className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Ejecutivo</p>
+                      <p className="text-base font-semibold">{meeting.executive}</p>
+                    </div>
+                  </div>
+
+                  {meeting.collaborator && (
+                    <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                      <Users className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Colaborador</p>
+                        <p className="text-base font-semibold">{meeting.collaborator}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Asistentes - Ocupa el ancho completo */}
+              <div className="mt-6">
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                  <Users className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Asistentes</p>
+                    {meeting.attendeesObjects && meeting.attendeesObjects.length > 0 ? (
+                      <div className="mt-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {meeting.attendeesObjects.map((a) => (
+                            <div key={a.id} className="p-2 bg-background/50 rounded">
+                              <p className="font-medium">{a.name}</p>
+                              {a.email && <p className="text-xs text-muted-foreground">{a.email}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-2">No hay asistentes</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter className="mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="transition-all hover:bg-muted"
+                >
+                  Cerrar
+                </Button>
+                <Button type="button" onClick={() => setIsEditing(true)} className="transition-all hover:scale-105">
+                  Editar Reunión
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      //==================================================================0
+
+      : <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[650px] animate-in fade-in zoom-in-95 duration-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              {isEditing ? "Editar Reunión" : "Detalle de Reunión"}
+              {!isEditing && (
+                <Badge className={`${locationConfig.color} gap-1.5`}>
+                  <LocationIcon className="h-3 w-3" />
+                  {locationConfig.label}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {isEditing ? (
+            <form onSubmit={handleSubmit}>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-date">Fecha *</Label>
+                    <Input
+                      id="edit-date"
+                      type="date"
+                      required
+                      value={formData.date}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      className="transition-all focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-location">Lugar *</Label>
+                    <Select
+                      value={formData.location}
+                      onValueChange={(value: Meeting["location"]) => setFormData({ ...formData, location: value })}
+                    >
+                      <SelectTrigger id="edit-location" className="transition-all focus:ring-2 focus:ring-blue-500">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sala-wit">Sala de Reuniones Wit</SelectItem>
+                        <SelectItem value="virtual">Reunión Virtual</SelectItem>
+                        <SelectItem value="presencial">Presencial (Fuera de oficina)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-startTime">Hora Inicio *</Label>
+                    <Input
+                      id="edit-startTime"
+                      type="time"
+                      required
+                      value={formData.startTime}
+                      onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                      className="transition-all focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-endTime">Hora Fin *</Label>
+                    <Input
+                      id="edit-endTime"
+                      type="time"
+                      required
+                      value={formData.endTime}
+                      onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                      className="transition-all focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="edit-date">Fecha *</Label>
+                  <Label htmlFor="edit-title">Título de la Reunión *</Label>
                   <Input
-                    id="edit-date"
-                    type="date"
+                    id="edit-title"
                     required
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     className="transition-all focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="edit-location">Lugar *</Label>
+                  <Label htmlFor="edit-client">Cliente *</Label>
+                  <Input
+                    id="edit-client"
+                    required
+                    value={formData.client}
+                    onChange={(e) => setFormData({ ...formData, client: e.target.value })}
+                    className="transition-all focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-executive">Ejecutivo *</Label>
                   <Select
-                    value={formData.location}
-                    onValueChange={(value: Meeting["location"]) => setFormData({ ...formData, location: value })}
+                    value={formData.executive}
+                    onValueChange={(value) => setFormData({ ...formData, executive: value })}
                   >
-                    <SelectTrigger id="edit-location" className="transition-all focus:ring-2 focus:ring-blue-500">
+                    <SelectTrigger id="edit-executive" className="transition-all focus:ring-2 focus:ring-blue-500">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="sala-wit">Sala de Reuniones Wit</SelectItem>
-                      <SelectItem value="virtual">Reunión Virtual</SelectItem>
-                      <SelectItem value="presencial">Presencial (Fuera de oficina)</SelectItem>
+                      {execOptions.length === 0 ? (
+                        <SelectItem value="no-executives" disabled>
+                          No hay ejecutivos disponibles
+                        </SelectItem>
+                      ) : (
+                        execOptions.map((exec) => (
+                          <SelectItem key={exec.id + "_" + exec.name} value={exec.name}>
+                            {exec.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-startTime">Hora Inicio *</Label>
-                  <Input
-                    id="edit-startTime"
-                    type="time"
-                    required
-                    value={formData.startTime}
-                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                    className="transition-all focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="edit-endTime">Hora Fin *</Label>
-                  <Input
-                    id="edit-endTime"
-                    type="time"
-                    required
-                    value={formData.endTime}
-                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                    className="transition-all focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-title">Título de la Reunión *</Label>
-                <Input
-                  id="edit-title"
-                  required
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="transition-all focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-client">Cliente *</Label>
-                <Input
-                  id="edit-client"
-                  required
-                  value={formData.client}
-                  onChange={(e) => setFormData({ ...formData, client: e.target.value })}
-                  className="transition-all focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-executive">Ejecutivo *</Label>
-                <Select
-                  value={formData.executive}
-                  onValueChange={(value) => setFormData({ ...formData, executive: value })}
-                >
-                  <SelectTrigger id="edit-executive" className="transition-all focus:ring-2 focus:ring-blue-500">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {execOptions.length === 0 ? (
-                      <SelectItem value="no-executives" disabled>
-                        No hay ejecutivos disponibles
-                      </SelectItem>
-                    ) : (
-                      execOptions.map((exec) => (
-                        <SelectItem key={exec.id + "_" + exec.name} value={exec.name}>
+                  <Label htmlFor="edit-collaborator">Colaborador (Opcional)</Label>
+                  <Select
+                    value={formData.collaborator || "no-collaborator"}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, collaborator: value === "no-collaborator" ? undefined : value })
+                    }
+                  >
+                    <SelectTrigger id="edit-collaborator" className="transition-all focus:ring-2 focus:ring-blue-500">
+                      <SelectValue placeholder="Sin colaborador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no-collaborator">Sin colaborador</SelectItem>
+                      {execOptions.map((exec) => (
+                        <SelectItem key={`collab-${exec.id}-${exec.name}`} value={exec.name}>
                           {exec.name}
                         </SelectItem>
-                      ))
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+
+                <div className="space-y-2">
+                  <Label>Asistentes</Label>
+                  <div className="max-h-40 overflow-auto border rounded p-2 bg-background">
+                    {userList.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No hay usuarios cargados.</p>
+                    ) : (
+                      userList.map((u) => {
+                        const checked = (formData.attendeesObjects ?? []).some(a => a.id === u.id)
+                        return (
+                          <label key={u.id} className="flex items-center gap-2 text-sm py-1">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleAttendee(u)}
+                              className="h-4 w-4"
+                            />
+                            <span className="truncate">{u.name} <span className="text-xs text-muted-foreground">({u.email})</span></span>
+                          </label>
+                        )
+                      })
                     )}
-                  </SelectContent>
-                </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Selecciona los asistentes a esta reunión.</p>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="edit-collaborator">Colaborador (Opcional)</Label>
-                <Select
-                  value={formData.collaborator || "no-collaborator"}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, collaborator: value === "no-collaborator" ? undefined : value })
-                  }
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditing(false)
+                    setFormData(meeting)
+                  }}
+                  className="transition-all hover:bg-muted"
                 >
-                  <SelectTrigger id="edit-collaborator" className="transition-all focus:ring-2 focus:ring-blue-500">
-                    <SelectValue placeholder="Sin colaborador" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="no-collaborator">Sin colaborador</SelectItem>
-                    {execOptions.map((exec) => (
-                      <SelectItem key={`collab-${exec.id}-${exec.name}`} value={exec.name}>
-                        {exec.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-
-              <div className="space-y-2">
-                <Label>Asistentes</Label>
-                <div className="max-h-40 overflow-auto border rounded p-2 bg-background">
-                  {userList.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No hay usuarios cargados.</p>
-                  ) : (
-                    userList.map((u) => {
-                      const checked = (formData.attendeesObjects ?? []).some(a => a.id === u.id)
-                      return (
-                        <label key={u.id} className="flex items-center gap-2 text-sm py-1">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleAttendee(u)}
-                            className="h-4 w-4"
-                          />
-                          <span className="truncate">{u.name} <span className="text-xs text-muted-foreground">({u.email})</span></span>
-                        </label>
-                      )
-                    })
-                  )}
+                  Cancelar
+                </Button>
+                <Button type="submit" className="transition-all hover:scale-105">
+                  Guardar Cambios
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : (
+            <div className="py-4 space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                  <Calendar className="h-5 w-5 text-blue-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Fecha</p>
+                    <p className="text-base font-semibold capitalize">{formatDate(meeting.date)}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">Selecciona los asistentes a esta reunión.</p>
-              </div>
-            </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsEditing(false)
-                  setFormData(meeting)
-                }}
-                className="transition-all hover:bg-muted"
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" className="transition-all hover:scale-105">
-                Guardar Cambios
-              </Button>
-            </DialogFooter>
-          </form>
-        ) : (
-          <div className="py-4 space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                <Calendar className="h-5 w-5 text-blue-400 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Fecha</p>
-                  <p className="text-base font-semibold capitalize">{formatDate(meeting.date)}</p>
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                  <Clock className="h-5 w-5 text-blue-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Horario</p>
+                    <p className="text-base font-semibold">
+                      {meeting.startTime} - {meeting.endTime}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                <Clock className="h-5 w-5 text-blue-400 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Horario</p>
-                  <p className="text-base font-semibold">
-                    {meeting.startTime} - {meeting.endTime}
-                  </p>
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                  <Briefcase className="h-5 w-5 text-blue-400 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Título</p>
+                    <p className="text-base font-semibold">{meeting.title}</p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                <Briefcase className="h-5 w-5 text-blue-400 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground">Título</p>
-                  <p className="text-base font-semibold">{meeting.title}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                <Users className="h-5 w-5 text-blue-400 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground">Cliente</p>
-                  <p className="text-base font-semibold">{meeting.client}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                <Users className="h-5 w-5 text-blue-400 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground">Ejecutivo</p>
-                  <p className="text-base font-semibold">{meeting.executive}</p>
-                </div>
-              </div>
-
-              {meeting.collaborator && (
                 <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
                   <Users className="h-5 w-5 text-blue-400 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Colaborador</p>
-                    <p className="text-base font-semibold">{meeting.collaborator}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Cliente</p>
+                    <p className="text-base font-semibold">{meeting.client}</p>
                   </div>
                 </div>
-              )}
 
-              {/* Attendees list */}
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                <Users className="h-5 w-5 text-blue-400 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground">Asistentes</p>
-                  {meeting.attendeesObjects && meeting.attendeesObjects.length > 0 ? (
-                    <ul className="text-sm list-disc ml-5 mt-1">
-                      {meeting.attendeesObjects.map((a) => (
-                        <li key={a.id}>{a.name} {a.email ? `(${a.email})` : ''}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-xs text-muted-foreground mt-1">No hay asistentes</p>
-                  )}
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                  <Users className="h-5 w-5 text-blue-400 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Ejecutivo</p>
+                    <p className="text-base font-semibold">{meeting.executive}</p>
+                  </div>
+                </div>
+
+                {meeting.collaborator && (
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                    <Users className="h-5 w-5 text-blue-400 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">Colaborador</p>
+                      <p className="text-base font-semibold">{meeting.collaborator}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Attendees list */}
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                  <Users className="h-5 w-5 text-blue-400 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Asistentes</p>
+                    {meeting.attendeesObjects && meeting.attendeesObjects.length > 0 ? (
+                      <ul className="text-sm list-disc ml-5 mt-1">
+                        {meeting.attendeesObjects.map((a) => (
+                          <li key={a.id}>{a.name} {a.email ? `(${a.email})` : ''}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">No hay asistentes</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                className="transition-all hover:bg-muted"
-              >
-                Cerrar
-              </Button>
-              <Button type="button" onClick={() => setIsEditing(true)} className="transition-all hover:scale-105">
-                Editar Reunión
-              </Button>
-            </DialogFooter>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="transition-all hover:bg-muted"
+                >
+                  Cerrar
+                </Button>
+                <Button type="button" onClick={() => setIsEditing(true)} className="transition-all hover:scale-105">
+                  Editar Reunión
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
   )
 }
+
+

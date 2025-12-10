@@ -741,6 +741,7 @@ export default function MeetingControlPage() {
         onUpdateMeeting={handleUpdateMeeting}
         executives={executiveNames}
         users={users}
+        isMobileView={isMobileView}
       />
     </div>
   )
