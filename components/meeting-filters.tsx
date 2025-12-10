@@ -11,6 +11,7 @@ type MeetingFiltersProps = {
   selectedLocation: string
   onExecutiveChange: (value: string) => void
   onLocationChange: (value: string) => void
+  isMobileView?: boolean
 }
 
 export function MeetingFilters({
@@ -19,6 +20,7 @@ export function MeetingFilters({
   selectedLocation,
   onExecutiveChange,
   onLocationChange,
+  isMobileView = false
 }: MeetingFiltersProps) {
   return (
     <Card className="p-4">
@@ -70,20 +72,24 @@ export function MeetingFilters({
           </Select>
         </div>
 
-        <div className="lg:col-span-2 flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-blue-500"></div>
-            <span className="text-muted-foreground">Sala Wit</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-cyan-500"></div>
-            <span className="text-muted-foreground">Virtual</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-teal-500"></div>
-            <span className="text-muted-foreground">Presencial</span>
-          </div>
-        </div>
+        {
+          !isMobileView && (
+            <div className="lg:col-span-2 flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-blue-500"></div>
+                <span className="text-muted-foreground">Sala Wit</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-cyan-500"></div>
+                <span className="text-muted-foreground">Virtual</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-teal-500"></div>
+                <span className="text-muted-foreground">Presencial</span>
+              </div>
+            </div>
+          )
+        }
       </div>
     </Card>
   )

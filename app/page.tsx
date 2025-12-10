@@ -669,6 +669,7 @@ export default function MeetingControlPage() {
           selectedLocation={effectiveLocation}  // forzado
           onExecutiveChange={setSelectedExecutive}
           onLocationChange={currentUser?.role === "salaWit" ? () => { } : setSelectedLocation}
+          isMobileView={isMobileView}
         />
 
         <div className="mt-4">
