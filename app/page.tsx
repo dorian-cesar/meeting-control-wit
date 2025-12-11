@@ -205,6 +205,7 @@ export default function MeetingControlPage() {
     monday.setDate(today.getDate() - currentDay + (currentDay === 0 ? -6 : 1))
     return monday
   })
+  const [isLogoClara, setIsLogoClara] = useState(false)
 
   const effectiveLocation = currentUser?.role === "salaWit" ? "sala-wit" : selectedLocation
 
@@ -633,18 +634,22 @@ export default function MeetingControlPage() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className='flex items-center gap-5'>
-            <img src="/logo-wit-mini.png" alt="Logo Wit" className='h-9 w-auto'/>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Control de Reuniones</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Sala Wit - Agenda {isMobileView ? 'Diaria' : 'Semanal'}
-                {currentUser && <span className="ml-2">• {currentUser.name}</span>}
-              </p>
-            </div>
+              <img
+                src={isLogoClara ? "/logo-wit-mini.png" : "/logo-wit-mini-light.png"}
+                alt="Logo Wit"
+                className='h-9 w-auto'
+              />
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">Control de Reuniones</h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Sala Wit - Agenda {isMobileView ? 'Diaria' : 'Semanal'}
+                  {currentUser && <span className="ml-2">• {currentUser.name}</span>}
+                </p>
+              </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <ThemeToggle />
+              <ThemeToggle onThemeChange={(theme) => setIsLogoClara(theme === "light")} />
               <Button
                 onClick={handleLogout}
                 variant="outline"
