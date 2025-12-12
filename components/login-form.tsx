@@ -153,6 +153,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                   autoComplete="current-password"
                 />
                 <button
+                  type='button'
                   className='absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer'
                   onClick={() => setShowPassword(!showPassword)}
                 >
